@@ -1,6 +1,6 @@
 const ORIGINS = {
-  openai: 'https://api.openai.com',
-  claude: 'https://api.anthropic.com',
+  '/openai': 'https://api.openai.com',
+  '/claude': 'https://api.anthropic.com',
 };
 
 const CORS_HEADERS = {
@@ -16,17 +16,18 @@ export default {
     }
 
     const url = new URL(request.url);
-    const target = url.searchParams.get('target');
-    const origin = ORIGINS[target];
+    const route = Object.keys(ORIGINS).find((prefix) => url.pathname === prefix || url.pathname.startsWith(prefix + '/'));
+    const origin = route ? ORIGINS[route] : null;
 
     if (!origin) {
       return new Response(
-        JSON.stringify({ error: 'Missing or invalid ?target= parameter. Use openai or claude.' }),
+        JSON.stringify({ error: 'Invalid path. Use /openai/... or /claude/...' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS } },
       );
     }
 
-    const targetUrl = origin + url.pathname + url.search.replace(/&?target=[^&]+/, '');
+    const upstreamPath = url.pathname.slice(route.length) || '/';
+    const targetUrl = origin + upstreamPath + url.search;
 
     const headers = new Headers(request.headers);
     headers.delete('host');
